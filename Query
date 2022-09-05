@@ -1,0 +1,16 @@
+AlertInfo
+//| where Timestamp > startofmonth(now()) //Uncheck for monthly scoping
+| where Timestamp between (datetime("8/22/2022 00:00") .. now()) //Uncheck for time range scoping
+| summarize count=count(), more=any(pack_all()), First=min(Timestamp), Latest=max(Timestamp) by Title
+| evaluate bag_unpack(more, columnsConflict='replace_source')
+| extend SeverityID = case(
+ Severity == "High", "3",
+ Severity == "Medium", "2",
+ Severity == "Low", "1",
+ "0"
+ )
+| sort by SeverityID desc 
+| project-rename Tactic=Category, Technique=AttackTechniques
+| extend Technique = todynamic(Technique) | mv-expand Technique to typeof(string)
+| project-reorder First, Latest, Title, ['count'], Severity, Technique, Tactic
+| where Severity != "Informational"
